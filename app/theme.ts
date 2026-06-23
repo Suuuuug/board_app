@@ -1,6 +1,7 @@
 "use client";
 
 import { createTheme } from "@mui/material/styles";
+export { postItColors } from "@/lib/colors";
 
 export function createAppTheme(mode: "light" | "dark") {
   return createTheme({
@@ -37,13 +38,3 @@ export function createAppTheme(mode: "light" | "dark") {
   });
 }
 
-export const postItColors = {
-  bg: "#fff59d",
-  border: "#e5d654",
-  text: "#2c2a22",
-  muted: "#4a4638",
-  line: "rgba(44, 40, 28, 0.18)",
-  done: "#2d6a4a",
-  progress: "#1d5a8a",
-  pending: "#9b3030",
-};
