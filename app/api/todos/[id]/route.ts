@@ -8,12 +8,11 @@ export async function PATCH(
   const { id } = await params
   const patch = await request.json() as { completed?: boolean; completedAt?: string | null }
 
-  const updated = db.todos.update(id, patch)
+  const updated = await db.todos.update(id, patch)
   if (!updated) return Response.json({ error: '찾을 수 없습니다.' }, { status: 404 })
 
-  // 완료로 변경 시 completion log에 기록
   if (patch.completed === true && updated.completedAt) {
-    const user = db.users.byId(updated.userId)
+    const user = await db.users.byId(updated.userId)
     if (user) {
       const entry: Completion = {
         id: crypto.randomUUID(),
@@ -23,7 +22,7 @@ export async function PATCH(
         task: updated.text,
         completedAt: updated.completedAt,
       }
-      db.completions.create(entry)
+      await db.completions.create(entry)
     }
   }
 
@@ -35,7 +34,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
-  const ok = db.todos.remove(id)
+  const ok = await db.todos.remove(id)
   if (!ok) return Response.json({ error: '찾을 수 없습니다.' }, { status: 404 })
   return new Response(null, { status: 204 })
 }

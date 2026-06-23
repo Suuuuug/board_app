@@ -20,19 +20,21 @@ function statusColor(status: string): string {
   return postItColors.pending;
 }
 
-export default function AllPage() {
+export default async function AllPage() {
   const today = new Date().toISOString().split("T")[0];
-  const users = db.users.all().map(({ pin: _pin, ...u }) => u);
+  const users = (await db.users.all()).map(({ pin: _pin, ...u }) => u);
 
-  const usersWithTodos = users.map((user) => {
-    const allTodos = db.todos.byUser(user.id);
-    const todayTodos = allTodos.filter(
-      (t) =>
-        !t.completed ||
-        (t.completedAt != null && t.completedAt.startsWith(today))
-    );
-    return { user, todos: todayTodos };
-  });
+  const usersWithTodos = await Promise.all(
+    users.map(async (user) => {
+      const allTodos = await db.todos.byUser(user.id);
+      const todayTodos = allTodos.filter(
+        (t) =>
+          !t.completed ||
+          (t.completedAt != null && t.completedAt.startsWith(today))
+      );
+      return { user, todos: todayTodos };
+    })
+  );
 
   const displayDate = today.replace(/-/g, ".");
 

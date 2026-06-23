@@ -4,7 +4,7 @@ import type { Todo } from '@/lib/types'
 
 export async function GET(request: NextRequest) {
   const userId = request.nextUrl.searchParams.get('userId')
-  const todos = userId ? db.todos.byUser(userId) : db.todos.all()
+  const todos = await (userId ? db.todos.byUser(userId) : db.todos.all())
   return Response.json(todos)
 }
 
@@ -25,5 +25,5 @@ export async function POST(request: Request) {
     createdAt: today,
   }
 
-  return Response.json(db.todos.create(todo), { status: 201 })
+  return Response.json(await db.todos.create(todo), { status: 201 })
 }

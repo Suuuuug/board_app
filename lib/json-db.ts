@@ -1,57 +1,42 @@
-import fs from 'fs'
-import path from 'path'
-import type { User, Todo, Completion } from './types'
-
-const DATA_DIR = path.join(process.cwd(), 'data')
-
-function read<T>(file: string): T[] {
-  return JSON.parse(fs.readFileSync(path.join(DATA_DIR, file), 'utf-8')) as T[]
-}
-
-function write<T>(file: string, data: T[]): void {
-  fs.writeFileSync(path.join(DATA_DIR, file), JSON.stringify(data, null, 2))
-}
+import { prisma } from './prisma'
+import type { Completion, Todo, User } from './types'
 
 export const db = {
   users: {
-    all: () => read<User>('users.json'),
-    byId: (id: string) => read<User>('users.json').find(u => u.id === id) ?? null,
-    byName: (name: string) => read<User>('users.json').find(u => u.name === name) ?? null,
+    all: (): Promise<User[]> => prisma.user.findMany() as Promise<User[]>,
+    byId: (id: string): Promise<User | null> =>
+      prisma.user.findUnique({ where: { id } }) as Promise<User | null>,
+    byName: (name: string): Promise<User | null> =>
+      prisma.user.findUnique({ where: { name } }) as Promise<User | null>,
   },
   todos: {
-    all: () => read<Todo>('todos.json'),
-    byUser: (userId: string) => read<Todo>('todos.json').filter(t => t.userId === userId),
-    byId: (id: string) => read<Todo>('todos.json').find(t => t.id === id) ?? null,
-    create(todo: Todo): Todo {
-      const list = read<Todo>('todos.json')
-      list.push(todo)
-      write('todos.json', list)
-      return todo
+    all: (): Promise<Todo[]> => prisma.todo.findMany() as Promise<Todo[]>,
+    byUser: (userId: string): Promise<Todo[]> =>
+      prisma.todo.findMany({ where: { userId } }) as Promise<Todo[]>,
+    byId: (id: string): Promise<Todo | null> =>
+      prisma.todo.findUnique({ where: { id } }) as Promise<Todo | null>,
+    create: ({ id, userId, text, completed, completedAt, createdAt }: Todo): Promise<Todo> =>
+      prisma.todo.create({ data: { id, userId, text, completed, completedAt, createdAt } }) as Promise<Todo>,
+    update: async (id: string, patch: Partial<Todo>): Promise<Todo | null> => {
+      try {
+        return await prisma.todo.update({ where: { id }, data: patch }) as Todo
+      } catch {
+        return null
+      }
     },
-    update(id: string, patch: Partial<Todo>): Todo | null {
-      const list = read<Todo>('todos.json')
-      const i = list.findIndex(t => t.id === id)
-      if (i === -1) return null
-      list[i] = { ...list[i], ...patch }
-      write('todos.json', list)
-      return list[i]
-    },
-    remove(id: string): boolean {
-      const list = read<Todo>('todos.json')
-      const i = list.findIndex(t => t.id === id)
-      if (i === -1) return false
-      list.splice(i, 1)
-      write('todos.json', list)
-      return true
+    remove: async (id: string): Promise<boolean> => {
+      try {
+        await prisma.todo.delete({ where: { id } })
+        return true
+      } catch {
+        return false
+      }
     },
   },
   completions: {
-    all: () => read<Completion>('completions.json'),
-    create(c: Completion): Completion {
-      const list = read<Completion>('completions.json')
-      list.unshift(c)
-      write('completions.json', list)
-      return c
-    },
+    all: (): Promise<Completion[]> =>
+      prisma.completion.findMany({ orderBy: { completedAt: 'desc' } }) as Promise<Completion[]>,
+    create: ({ id, userId, userName, todoId, task, completedAt }: Completion): Promise<Completion> =>
+      prisma.completion.create({ data: { id, userId, userName, todoId, task, completedAt } }) as Promise<Completion>,
   },
 }
