@@ -36,8 +36,7 @@ export default function CompletionLog({ completions }: Props) {
           <Paper
             key={entry.id}
             component="li"
-            variant="outlined"
-            sx={{ p: 1.5, borderColor: "divider", lineHeight: 1.4 }}
+            sx={{ p: 1.5, lineHeight: 1.4 }}
           >
             <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
               {entry.userName}

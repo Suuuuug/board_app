@@ -3,7 +3,6 @@
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 import {
-  Box,
   Button,
   Checkbox,
   Chip,
@@ -68,17 +67,15 @@ export default function PostItCard({
 
   return (
     <Paper
-      elevation={0}
       sx={{
         minHeight: "100%",
         scrollSnapAlign: "start",
         p: 2.5,
         bgcolor: postItColors.bg,
         color: postItColors.text,
-        border: `1px solid ${postItColors.border}`,
+        borderRadius: 0,
         display: "flex",
         flexDirection: "column",
-        boxSizing: "border-box",
       }}
     >
       <Typography variant="body2" align="right" sx={{ mb: 2, color: postItColors.muted }}>
@@ -101,13 +98,11 @@ export default function PostItCard({
               <Checkbox
                 size="small"
                 checked={todo.completed}
-                readOnly={!canEdit}
-                onDoubleClick={() => canEdit && onToggleComplete(todo.id, !todo.completed)}
-                onClick={(e) => e.preventDefault()}
+                disabled={!canEdit}
+                onChange={() => onToggleComplete(todo.id, !todo.completed)}
                 icon={<CheckBoxOutlineBlankIcon sx={{ color: postItColors.text }} />}
                 checkedIcon={<CheckBoxIcon sx={{ color: postItColors.text }} />}
                 sx={{ p: 0, cursor: canEdit ? "pointer" : "default" }}
-                title={canEdit ? "더블클릭하여 완료/취소" : undefined}
               />
               <ListItemText
                 primary={todo.text}
@@ -181,13 +176,6 @@ export default function PostItCard({
         </Stack>
       )}
 
-      {!canEdit && (
-        <Box sx={{ pt: 1, borderTop: `1px solid ${postItColors.line}` }}>
-          <Typography variant="caption" sx={{ color: postItColors.muted }}>
-            {/* intentionally empty — read-only past post-it */}
-          </Typography>
-        </Box>
-      )}
     </Paper>
   );
 }

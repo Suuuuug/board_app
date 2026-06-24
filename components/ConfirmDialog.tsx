@@ -28,7 +28,7 @@ export default function ConfirmDialog({ open, message, onConfirm, onCancel }: Pr
           취소
         </Button>
         <Button onClick={onConfirm} color="error" variant="contained">
-          삭제
+          확인
         </Button>
       </DialogActions>
     </Dialog>

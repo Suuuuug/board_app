@@ -23,7 +23,10 @@ export async function PATCH(
         completedAt: updated.completedAt,
       }
       await db.completions.create(entry)
+      await db.completions.trim(10)
     }
+  } else if (patch.completed === false) {
+    await db.completions.deleteByTodoId(id)
   }
 
   return Response.json(updated)
@@ -34,6 +37,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params
+  await db.completions.deleteByTodoId(id)
   const ok = await db.todos.remove(id)
   if (!ok) return Response.json({ error: '찾을 수 없습니다.' }, { status: 404 })
   return new Response(null, { status: 204 })

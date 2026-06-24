@@ -2,15 +2,13 @@
 
 import {
   Box,
-  Button,
   CssBaseline,
-  Stack,
   ThemeProvider,
   Typography,
 } from "@mui/material";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createAppTheme } from "./theme";
+import { appTheme } from "./theme";
 import Sidebar from "@/components/Sidebar";
 import PostItCard from "@/components/PostItCard";
 import CompletionLog from "@/components/CompletionLog";
@@ -46,38 +44,29 @@ export default function TodoListView() {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const [dark, setDark] = useState(true);
   const [users, setUsers] = useState<PublicUser[]>([]);
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
   const [loggedIn, setLoggedIn] = useState<PublicUser | null>(null);
   const [todos, setTodos] = useState<Todo[]>([]);
   const [completions, setCompletions] = useState<Completion[]>([]);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [completeTarget, setCompleteTarget] = useState<{ todoId: string; completed: boolean } | null>(null);
+  const [completeMessage, setCompleteMessage] = useState("");
 
-  const theme = useMemo(() => createAppTheme(dark ? "dark" : "light"), [dark]);
   const postIts = useMemo(() => groupTodosIntoPostIts(todos), [todos]);
 
-  // Load theme and logged-in user from localStorage
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "light") setDark(false);
-
     const savedUser = localStorage.getItem("loggedIn");
     if (savedUser) {
       try {
         setLoggedIn(JSON.parse(savedUser) as PublicUser);
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("theme", dark ? "dark" : "light");
-  }, [dark]);
-
-  // Fetch users on mount
   useEffect(() => {
     fetch("/api/users")
       .then((r) => r.json())
@@ -87,7 +76,6 @@ export default function TodoListView() {
       });
   }, []);
 
-  // Fetch todos when active user changes
   useEffect(() => {
     if (!activeUserId) return;
     fetch(`/api/todos?userId=${activeUserId}`)
@@ -95,51 +83,50 @@ export default function TodoListView() {
       .then((data: Todo[]) => setTodos(data));
   }, [activeUserId]);
 
-  // Fetch completions on mount
   useEffect(() => {
     fetch("/api/completions")
       .then((r) => r.json())
       .then((data: Completion[]) => setCompletions(data));
   }, []);
 
-  // Scroll to top when user changes
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: 0 });
   }, [activeUserId]);
-
-  const handleSelectUser = (userId: string) => setActiveUserId(userId);
 
   const handleLogin = (user: PublicUser) => {
     setLoggedIn(user);
     localStorage.setItem("loggedIn", JSON.stringify(user));
     setLoginOpen(false);
-    // Switch to logged-in user's post-it
     setActiveUserId(user.id);
   };
 
   const handleLogout = () => {
     setLoggedIn(null);
     localStorage.removeItem("loggedIn");
+    setLogoutOpen(false);
   };
 
-  const handleToggleComplete = async (todoId: string, completed: boolean) => {
+  const handleToggleComplete = (todoId: string, completed: boolean) => {
     if (!loggedIn || loggedIn.id !== activeUserId) return;
-    const completedAt = completed ? new Date().toISOString() : null;
+    setCompleteMessage(completed ? "완료로 처리하시겠습니까?" : "완료를 취소하시겠습니까?");
+    setCompleteTarget({ todoId, completed });
+  };
+
+  const handleConfirmToggle = async () => {
+    if (!completeTarget) return;
+    const { todoId, completed } = completeTarget;
     const res = await fetch(`/api/todos/${todoId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ completed, completedAt }),
+      body: JSON.stringify({ completed, completedAt: completed ? new Date().toISOString() : null }),
     });
+    setCompleteTarget(null);
     if (!res.ok) return;
     const updated: Todo = await res.json();
     setTodos((prev) => prev.map((t) => (t.id === todoId ? updated : t)));
-
-    if (completed) {
-      // Refresh completions
-      fetch("/api/completions")
-        .then((r) => r.json())
-        .then((data: Completion[]) => setCompletions(data));
-    }
+    fetch("/api/completions")
+      .then((r) => r.json())
+      .then((data: Completion[]) => setCompletions(data));
   };
 
   const handleAddTodo = async (text: string) => {
@@ -164,6 +151,9 @@ export default function TodoListView() {
     const res = await fetch(`/api/todos/${deleteTarget}`, { method: "DELETE" });
     if (res.ok) {
       setTodos((prev) => prev.filter((t) => t.id !== deleteTarget));
+      fetch("/api/completions")
+        .then((r) => r.json())
+        .then((data: Completion[]) => setCompletions(data));
     }
     setDeleteTarget(null);
   };
@@ -171,50 +161,38 @@ export default function TodoListView() {
   const canEdit = !!loggedIn && loggedIn.id === activeUserId;
 
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider theme={appTheme}>
       <CssBaseline />
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "160px 1fr 200px" },
+          gridTemplateColumns: sidebarOpen
+            ? { xs: "160px 1fr", md: "160px 1fr 200px" }
+            : { xs: "40px 1fr", md: "40px 1fr 200px" },
           height: "100vh",
           bgcolor: "background.default",
           color: "text.primary",
         }}
       >
-        {/* Left sidebar */}
         <Sidebar
+          isOpen={sidebarOpen}
           users={users}
           activeUserId={activeUserId}
           loggedIn={loggedIn}
-          onSelectUser={handleSelectUser}
+          onSelectUser={setActiveUserId}
           onLoginClick={() => setLoginOpen(true)}
-          onLogout={handleLogout}
+          onLogout={() => setLogoutOpen(true)}
           onViewAll={() => router.push("/all")}
+          onToggle={() => setSidebarOpen((v) => !v)}
         />
 
-        {/* Main area */}
         <Box
           component="main"
           sx={{ p: 3, display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0 }}
         >
-          <Stack
-            direction="row"
-            sx={{ mb: 2.5, gap: 1.5, alignItems: "center", justifyContent: "space-between" }}
-          >
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-              To do list
-            </Typography>
-            <Button
-              variant="outlined"
-              color="inherit"
-              size="small"
-              onClick={() => setDark((v) => !v)}
-              sx={{ fontSize: 12, py: 0.75, px: 1.5, borderRadius: 0 }}
-            >
-              {dark ? "라이트 모드" : "다크 모드"}
-            </Button>
-          </Stack>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2.5 }}>
+            To do list
+          </Typography>
 
           <Box
             sx={{
@@ -224,8 +202,8 @@ export default function TodoListView() {
               display: "flex",
               flexDirection: "column",
               bgcolor: "background.paper",
-              border: 1,
-              borderColor: "divider",
+              borderRadius: 1,
+              boxShadow: "0 4px 20px rgba(0,0,0,0.10)",
             }}
           >
             <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5 }}>
@@ -233,7 +211,16 @@ export default function TodoListView() {
             </Typography>
             <Box
               ref={scrollRef}
-              sx={{ flex: 1, minHeight: 0, overflowY: "auto", scrollSnapType: "y mandatory" }}
+              sx={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: "auto",
+                scrollSnapType: "y mandatory",
+                p: 1,
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+              }}
             >
               {postIts.map((record: PostItRecord) => (
                 <PostItCard
@@ -250,7 +237,6 @@ export default function TodoListView() {
           </Box>
         </Box>
 
-        {/* Right sidebar */}
         <Box
           component="aside"
           sx={{
@@ -258,10 +244,10 @@ export default function TodoListView() {
             flexDirection: "column",
             gap: 1.5,
             p: "24px 16px",
-            borderLeft: 1,
-            borderColor: "divider",
+            boxShadow: "-4px 0 12px rgba(0,0,0,0.08)",
             overflowY: "auto",
             minHeight: 0,
+            zIndex: 1,
           }}
         >
           <CompletionLog completions={completions} />
@@ -270,10 +256,22 @@ export default function TodoListView() {
 
       <LoginDialog open={loginOpen} onClose={() => setLoginOpen(false)} onLogin={handleLogin} />
       <ConfirmDialog
+        open={!!completeTarget}
+        message={completeMessage}
+        onConfirm={handleConfirmToggle}
+        onCancel={() => setCompleteTarget(null)}
+      />
+      <ConfirmDialog
         open={!!deleteTarget}
         message="이 할 일을 정말 삭제하시겠습니까?"
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteTarget(null)}
+      />
+      <ConfirmDialog
+        open={logoutOpen}
+        message="로그아웃하시겠습니까?"
+        onConfirm={handleLogout}
+        onCancel={() => setLogoutOpen(false)}
       />
     </ThemeProvider>
   );

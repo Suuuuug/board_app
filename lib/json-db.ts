@@ -38,5 +38,14 @@ export const db = {
       prisma.completion.findMany({ orderBy: { completedAt: 'desc' } }) as Promise<Completion[]>,
     create: ({ id, userId, userName, todoId, task, completedAt }: Completion): Promise<Completion> =>
       prisma.completion.create({ data: { id, userId, userName, todoId, task, completedAt } }) as Promise<Completion>,
+    deleteByTodoId: (todoId: string): Promise<unknown> =>
+      prisma.completion.deleteMany({ where: { todoId } }),
+    trim: async (maxCount: number): Promise<void> => {
+      const all = await prisma.completion.findMany({ orderBy: { completedAt: 'asc' } })
+      if (all.length > maxCount) {
+        const ids = all.slice(0, all.length - maxCount).map((c) => c.id)
+        await prisma.completion.deleteMany({ where: { id: { in: ids } } })
+      }
+    },
   },
 }
