@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { Box, Grid, Paper, Typography } from "@mui/material";
 import { db } from "@/lib/json-db";
 import type { Todo } from "@/lib/types";
