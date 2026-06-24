@@ -3,7 +3,7 @@ import type { Completion, Todo, User } from './types'
 
 export const db = {
   users: {
-    all: (): Promise<User[]> => prisma.user.findMany() as Promise<User[]>,
+    all: (): Promise<User[]> => prisma.user.findMany({ orderBy: { name: 'asc' } }) as Promise<User[]>,
     byId: (id: string): Promise<User | null> =>
       prisma.user.findUnique({ where: { id } }) as Promise<User | null>,
     byName: (name: string): Promise<User | null> =>
